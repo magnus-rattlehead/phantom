@@ -1,0 +1,13 @@
+build/
+build-asan/
+build-debug/
+*.o
+*.a
+*.dylib
+.DS_Store
+compile_commands.json
+.cache/
+models/
+src/config.h
+*.un~
+assets/fonts/
