@@ -1,5 +1,4 @@
 #include "ccg.h"
-#include "../config.h"
 
 #include <pthread.h>
 #include <stdarg.h>
@@ -12,16 +11,15 @@
 #define CCG_LOG(...) ml_log("ccg", __VA_ARGS__)
 
 struct CCG {
-    CcgNode        *table[CCG_TABLE_CAP];
-    size_t          n_nodes;
+    CcgNode *table[CCG_TABLE_CAP];
+    size_t n_nodes;
     pthread_mutex_t lock;
 };
 
-#define FNV1A_SEED   UINT64_C(0xcbf29ce484222325)
-#define FNV1A_PRIME  UINT64_C(0x100000001b3)
+#define FNV1A_SEED UINT64_C(0xcbf29ce484222325)
+#define FNV1A_PRIME UINT64_C(0x100000001b3)
 
-static uint64_t fnv1a_update(uint64_t h, const void *data, size_t len)
-{
+static uint64_t fnv1a_update(uint64_t h, const void *data, size_t len) {
     const unsigned char *p = (const unsigned char *)data;
     for (size_t i = 0; i < len; i++) {
         h = (h ^ p[i]) * FNV1A_PRIME;
@@ -29,53 +27,54 @@ static uint64_t fnv1a_update(uint64_t h, const void *data, size_t len)
     return h;
 }
 
-uint64_t ccg_hash_state(const char *cwd, const char *last_cmd,
-                         int exit_code)
-{
-    if (NULL == cwd)      cwd      = "";
-    if (NULL == last_cmd) last_cmd = "";
+uint64_t ccg_hash_state(const char *cwd, const char *last_cmd, int exit_code) {
+    if (NULL == cwd)
+        cwd = "";
+    if (NULL == last_cmd)
+        last_cmd = "";
 
     uint64_t h = FNV1A_SEED;
-    h = fnv1a_update(h, cwd,      strlen(cwd) + 1);
+    h = fnv1a_update(h, cwd, strlen(cwd) + 1);
     h = fnv1a_update(h, last_cmd, strlen(last_cmd) + 1);
     uint32_t ec = (uint32_t)exit_code;
     h = fnv1a_update(h, &ec, sizeof ec);
     return h;
 }
 
-static CcgNode *find_node(CCG *g, uint64_t state_hash)
-{
+static CcgNode *find_node(const CCG *g, uint64_t state_hash) {
     size_t idx = (size_t)(state_hash & (CCG_TABLE_CAP - 1));
-    CcgNode *n  = g->table[idx];
+    CcgNode *n = g->table[idx];
     while (NULL != n) {
-        if (n->state_hash == state_hash) return n;
+        if (n->state_hash == state_hash)
+            return n;
         n = n->next;
     }
     return NULL;
 }
 
-static int find_edge(const CcgNode *n, const char *cmd)
-{
+static int find_edge(const CcgNode *n, const char *cmd) {
     for (int i = 0; i < n->n_edges; i++) {
-        if (0 == strcmp(n->edges[i].cmd, cmd)) return i;
+        if (0 == strcmp(n->edges[i].cmd, cmd))
+            return i;
     }
     return -1;
 }
 
-static int max_edge(const CcgNode *n)
-{
-    if (0 == n->n_edges) return -1;
+static int max_edge(const CcgNode *n) {
+    if (0 == n->n_edges)
+        return -1;
     int best = 0;
     for (int i = 1; i < n->n_edges; i++) {
-        if (n->edges[i].freq > n->edges[best].freq) best = i;
+        if (n->edges[i].freq > n->edges[best].freq)
+            best = i;
     }
     return best;
 }
 
-CCG *ccg_create(void)
-{
+CCG *ccg_create(void) {
     CCG *g = calloc(1, sizeof *g);
-    if (NULL == g) return NULL;
+    if (NULL == g)
+        return NULL;
     if (0 != pthread_mutex_init(&g->lock, NULL)) {
         free(g);
         return NULL;
@@ -83,9 +82,9 @@ CCG *ccg_create(void)
     return g;
 }
 
-void ccg_destroy(CCG *g)
-{
-    if (NULL == g) return;
+void ccg_destroy(CCG *g) {
+    if (NULL == g)
+        return;
     for (size_t i = 0; i < CCG_TABLE_CAP; i++) {
         CcgNode *n = g->table[i];
         while (NULL != n) {
@@ -98,15 +97,15 @@ void ccg_destroy(CCG *g)
     free(g);
 }
 
-const char *ccg_lookup(const CCG *g, uint64_t state_hash,
-                        uint32_t *out_freq)
-{
-    if (NULL != out_freq) *out_freq = 0;
-    if (NULL == g) return NULL;
+const char *ccg_lookup(const CCG *g, uint64_t state_hash, uint32_t *out_freq) {
+    if (NULL != out_freq)
+        *out_freq = 0;
+    if (NULL == g)
+        return NULL;
 
     pthread_mutex_lock((pthread_mutex_t *)&g->lock);
 
-    const CcgNode *n = find_node((CCG *)g, state_hash);
+    const CcgNode *n = find_node(g, state_hash);
     if (NULL == n) {
         pthread_mutex_unlock((pthread_mutex_t *)&g->lock);
         return NULL;
@@ -119,7 +118,8 @@ const char *ccg_lookup(const CCG *g, uint64_t state_hash,
     }
 
     uint32_t freq = n->edges[best].freq;
-    if (NULL != out_freq) *out_freq = freq;
+    if (NULL != out_freq)
+        *out_freq = freq;
 
     const char *result = NULL;
     if (freq >= (uint32_t)CCG_INSTANT_THRESHOLD) {
@@ -131,14 +131,13 @@ const char *ccg_lookup(const CCG *g, uint64_t state_hash,
     return result;
 }
 
-int ccg_top_k(const CCG *g, uint64_t state_hash,
-               const char **out, int k)
-{
-    if (NULL == g || NULL == out || k <= 0) return 0;
+int ccg_top_k(const CCG *g, uint64_t state_hash, const char **out, int k) {
+    if (NULL == g || NULL == out || k <= 0)
+        return 0;
 
     pthread_mutex_lock((pthread_mutex_t *)&g->lock);
 
-    const CcgNode *n = find_node((CCG *)g, state_hash);
+    const CcgNode *n = find_node(g, state_hash);
     if (NULL == n) {
         pthread_mutex_unlock((pthread_mutex_t *)&g->lock);
         return 0;
@@ -157,9 +156,11 @@ int ccg_top_k(const CCG *g, uint64_t state_hash,
         }
         if (nsorted < k || pos < k) {
             int bound = (nsorted < k) ? nsorted : k - 1;
-            for (int j = bound; j > pos; j--) sorted[j] = sorted[j - 1];
+            for (int j = bound; j > pos; j--)
+                sorted[j] = sorted[j - 1];
             sorted[pos] = i;
-            if (nsorted < k) nsorted++;
+            if (nsorted < k)
+                nsorted++;
         }
     }
 
@@ -172,19 +173,14 @@ int ccg_top_k(const CCG *g, uint64_t state_hash,
     return result;
 }
 
-int ccg_train(CCG *g, uint64_t state_hash, const char *cmd)
-{
-    if (NULL == g || NULL == cmd) return -1;
+int ccg_train(CCG *g, uint64_t state_hash, const char *cmd) {
+    if (NULL == g || NULL == cmd)
+        return -1;
 
     pthread_mutex_lock(&g->lock);
 
-    size_t idx  = (size_t)(state_hash & (CCG_TABLE_CAP - 1));
-    CcgNode *n  = g->table[idx];
-
-    while (NULL != n) {
-        if (n->state_hash == state_hash) break;
-        n = n->next;
-    }
+    size_t idx = (size_t)(state_hash & (CCG_TABLE_CAP - 1));
+    CcgNode *n = find_node(g, state_hash);
 
     int new_node = 0;
     if (NULL == n) {
@@ -194,7 +190,7 @@ int ccg_train(CCG *g, uint64_t state_hash, const char *cmd)
             return -1;
         }
         n->state_hash = state_hash;
-        n->next       = g->table[idx];
+        n->next = g->table[idx];
         g->table[idx] = n;
         g->n_nodes++;
         new_node = 1;
@@ -220,9 +216,9 @@ int ccg_train(CCG *g, uint64_t state_hash, const char *cmd)
     return 0;
 }
 
-void ccg_prune(CCG *g)
-{
-    if (NULL == g) return;
+void ccg_prune(CCG *g) {
+    if (NULL == g)
+        return;
 
     pthread_mutex_lock(&g->lock);
     size_t nodes_before = g->n_nodes;
@@ -235,13 +231,13 @@ void ccg_prune(CCG *g)
             int wi = 0;
             for (int ei = 0; ei < n->n_edges; ei++) {
                 if (n->edges[ei].freq > 1) {
-                    if (wi != ei) n->edges[wi] = n->edges[ei];
+                    if (wi != ei)
+                        n->edges[wi] = n->edges[ei];
                     wi++;
                 }
             }
             n->n_edges = wi;
 
-            /* If node has no edges, unlink and free it. */
             if (0 == n->n_edges) {
                 *pp = n->next;
                 free(n);

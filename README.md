@@ -1,23 +1,24 @@
 # phantom
 
 A GPU-accelerated terminal emulator for macOS+Linux with LLM-powered shell command autocomplete.
+Early stage development. Expect breaking bugs and missing features.
 
 Built on SDL3 + OpenGL 3.3.
 Inference runs on Metal via llama.cpp.
 
 I started this project about a year ago to learn graphics programming and never intended to go
 beyond that. After trying the Warp terminal, I really grew to love its autocomplete suggestions,
-but hated that it wasn't Open Source (and its text buffer search implementation is extremely slow).
-So I came back early this year to try and expand my initial project into something more. To be honest 
-the LLM integration was definitely over my head, I went back and forth with Gemini to help me with it.
-The ARM64 SIMD search was also written with the help of Gemini, as I am not familiar with ARM64 instructions.
+but hated that it wasn't Open Source (and its search implementation is extremely slow).
+So I came back early this year to try and expand my initial project into something more.
+
+Thanks to the Alacritty, Kitty and Ghostty projects for their inspiration.
 
 ---
 
 ## Features
 
 - VT100/ANSI/xterm-256color with truecolor
-- LZFSE/zlib-compressed infinite scrollback
+- LZ4-compressed infinite scrollback
 - Incremental search (AVX2 on x86_64, NEON on ARM64, SWAR fallback; rarest-character pivot)
 - Autocomplete: CCG, history trie, schema expert, FS completion, Makefile/npm targets, LLM FIM
 
@@ -111,7 +112,7 @@ Colors are `COLOR_0`–`COLOR_15` (RGBA hex), standard ANSI layout. Defaults: Gr
 | Escape | Dismiss suggestion |
 | Cmd+F | Open search |
 | Enter / n | Next search result |
-| Shift+N | Previous result |
+| Shift+N/Enter | Previous result |
 | Escape | Close search |
 | Mouse drag / release | Select + copy to clipboard |
 | Mouse wheel | Scroll scrollback |
@@ -184,15 +185,12 @@ ctest --test-dir build
 
 ---
 
-## Known issues / caveats
-
-- The `compress2` / `uncompress` paths in the scrollback buffer are only exercised on non-Apple builds (macOS uses LZFSE). Run `ctest` on Linux after changes to the scrollback compression code.
-
----
-
 ## Planned improvements
 
-- Vim-based navigation
+- Vim-based navigation (normal/insert/copy modes, visual selection, undo/redo)
+- Text wrapping (soft-wrap long lines at window width)
+- Pane resizing (split panes with draggable dividers)
+- Memory Usage optimizations: aggressive compression on old chunks, disk-based read/writes
 
 ## Third-party
 

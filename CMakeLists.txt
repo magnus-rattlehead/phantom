@@ -13,15 +13,18 @@ find_package(SDL3 REQUIRED)
 # OpenGL
 find_package(OpenGL REQUIRED)
 
+# LZ4 (installed via: brew install lz4)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LZ4 REQUIRED IMPORTED_TARGET liblz4)
+
 # macOS system frameworks required by the CoreText font engine
 if(APPLE)
     find_library(CORE_TEXT_LIB       CoreText       REQUIRED)
     find_library(CORE_GRAPHICS_LIB   CoreGraphics   REQUIRED)
     find_library(CORE_FOUNDATION_LIB CoreFoundation REQUIRED)
-    find_library(COMPRESSION_LIB     Compression    REQUIRED)
+    find_library(APP_KIT_LIB         AppKit         REQUIRED)
 else()
     find_package(Freetype REQUIRED)
-    find_package(ZLIB REQUIRED)
     include(CheckCCompilerFlag)
     check_c_compiler_flag(-mavx2 COMPILER_HAS_AVX2)
     if(COMPILER_HAS_AVX2)
@@ -190,13 +193,13 @@ phantom_inject_font_def(PHANTOM_FONT_BOLD_PATH       PHANTOM_DEFAULT_FONT_BOLD)
 phantom_inject_font_def(PHANTOM_FONT_ITALIC_PATH     PHANTOM_DEFAULT_FONT_ITALIC)
 phantom_inject_font_def(PHANTOM_FONT_BOLD_ITALIC_PATH PHANTOM_DEFAULT_FONT_BOLD_ITALIC)
 
-set(PHANTOM_LIBS SDL3::SDL3 OpenGL::GL llama)
+set(PHANTOM_LIBS SDL3::SDL3 OpenGL::GL llama PkgConfig::LZ4)
 if(APPLE)
     list(APPEND PHANTOM_LIBS
         ${CORE_TEXT_LIB} ${CORE_GRAPHICS_LIB} ${CORE_FOUNDATION_LIB}
-        ${COMPRESSION_LIB})
+        ${APP_KIT_LIB})
 else()
-    list(APPEND PHANTOM_LIBS Freetype::Freetype ZLIB::ZLIB)
+    list(APPEND PHANTOM_LIBS Freetype::Freetype)
 endif()
 target_link_libraries(phantom PRIVATE ${PHANTOM_LIBS})
 
@@ -211,6 +214,10 @@ endif()
 if(APPLE)
     option(PHANTOM_MACOS_BUNDLE "Build phantom as a .app bundle" ON)
     if(PHANTOM_MACOS_BUNDLE)
+        set(PHANTOM_ICNS "${CMAKE_SOURCE_DIR}/assets/phantom.icns")
+        target_sources(phantom PRIVATE "${PHANTOM_ICNS}")
+        set_source_files_properties("${PHANTOM_ICNS}" PROPERTIES
+            MACOSX_PACKAGE_LOCATION "Resources")
         set_target_properties(phantom PROPERTIES
             MACOSX_BUNDLE TRUE
             MACOSX_BUNDLE_INFO_PLIST
@@ -218,6 +225,25 @@ if(APPLE)
             MACOSX_BUNDLE_GUI_IDENTIFIER "com.magnusrattlehead.phantom"
             MACOSX_BUNDLE_BUNDLE_VERSION "1"
             MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
+            MACOSX_BUNDLE_ICON_FILE "phantom"
+        )
+        # Copy any *.gguf models from source models/ to
+        # ~/Library/Application Support/phantom/models/ on every build.
+        # Uses -n so existing files are not overwritten.
+        add_custom_command(TARGET phantom POST_BUILD
+            COMMAND "${CMAKE_SOURCE_DIR}/cmake/sync_models.sh"
+                "${CMAKE_SOURCE_DIR}/models"
+                "$ENV{HOME}/Library/Application Support/phantom/models"
+            COMMENT "Syncing models to ~/Library/Application Support/phantom/models/"
+        )
+
+        # Install to /Applications (run: cmake --build build --target install-app)
+        add_custom_target(install-app
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "$<TARGET_BUNDLE_DIR:phantom>"
+                "/Applications/phantom.app"
+            DEPENDS phantom
+            COMMENT "Installing phantom.app to /Applications"
         )
     endif()
 endif()
@@ -246,9 +272,7 @@ endfunction()
 
 add_phantom_test(test_terminal
     "tests/test_terminal.c;${TERMINAL_SRCS}")
-if(APPLE)
-    target_link_libraries(test_terminal PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_terminal PRIVATE PkgConfig::LZ4)
 
 add_phantom_test(test_history
     "tests/ml/test_history.c;${HISTORY_SRCS}")
@@ -256,16 +280,12 @@ add_phantom_test(test_history
 add_phantom_test(test_pty
     "tests/test_pty.c;${PTY_SRCS}")
 target_link_libraries(test_pty PRIVATE pthread)
-if(APPLE)
-    target_link_libraries(test_pty PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_pty PRIVATE PkgConfig::LZ4)
 
 add_phantom_test(test_search
     "tests/test_search.c;src/search.c;${TERMINAL_SRCS}")
 target_link_libraries(test_search PRIVATE SDL3::SDL3 pthread)
-if(APPLE)
-    target_link_libraries(test_search PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_search PRIVATE PkgConfig::LZ4)
 
 add_phantom_test(test_ansi
     "tests/ml/test_ansi.c;${ANSI_SRCS}")
@@ -273,23 +293,17 @@ add_phantom_test(test_ansi
 add_phantom_test(test_context
     "tests/ml/test_context.c;${CONTEXT_SRCS};${TERMINAL_SRCS}")
 target_link_libraries(test_context PRIVATE pthread)
-if(APPLE)
-    target_link_libraries(test_context PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_context PRIVATE PkgConfig::LZ4)
 
 add_phantom_test(test_fsprobe
     "tests/ml/test_fsprobe.c;${CONTEXT_SRCS};${TERMINAL_SRCS}")
 target_link_libraries(test_fsprobe PRIVATE pthread)
-if(APPLE)
-    target_link_libraries(test_fsprobe PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_fsprobe PRIVATE PkgConfig::LZ4)
 
 add_phantom_test(test_fs_complete
     "tests/ml/test_fs_complete.c;${CONTEXT_SRCS};${TERMINAL_SRCS}")
 target_link_libraries(test_fs_complete PRIVATE pthread)
-if(APPLE)
-    target_link_libraries(test_fs_complete PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_fs_complete PRIVATE PkgConfig::LZ4)
 
 add_phantom_test(test_htrie
     "tests/ml/test_htrie.c;${HTRIE_SRCS}")
@@ -304,9 +318,7 @@ target_link_libraries(test_ccg PRIVATE pthread)
 
 add_phantom_test(test_exit_code
     "tests/test_exit_code.c;${TERMINAL_SRCS}")
-if(APPLE)
-    target_link_libraries(test_exit_code PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_exit_code PRIVATE PkgConfig::LZ4)
 
 set(CCG_TRAINING_SRCS
     src/ml/autocomplete.c
@@ -323,10 +335,7 @@ add_phantom_test(test_ccg_training
     "tests/ml/test_ccg_training.c;${CCG_TRAINING_SRCS}")
 target_link_libraries(test_ccg_training
     PRIVATE SDL3::SDL3 llama pthread)
-if(APPLE)
-    target_link_libraries(test_ccg_training
-        PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_ccg_training PRIVATE PkgConfig::LZ4)
 
 set(FIM_TEST_SRCS
     src/ml/autocomplete.c
@@ -342,10 +351,7 @@ add_phantom_test(test_autocomplete_fim
     "tests/ml/test_autocomplete_fim.c;${FIM_TEST_SRCS};${CCG_SRCS}")
 target_link_libraries(test_autocomplete_fim
     PRIVATE SDL3::SDL3 llama pthread)
-if(APPLE)
-    target_link_libraries(test_autocomplete_fim
-        PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_autocomplete_fim PRIVATE PkgConfig::LZ4)
 
 add_phantom_test(test_kv_cache
     "tests/ml/test_kv_cache.c;src/ml/llm.c;tests/ml/llama_stub.c")
@@ -372,9 +378,7 @@ target_include_directories(test_thread_qos PRIVATE
     third_party/llama.cpp/ggml/include)
 target_compile_definitions(test_thread_qos PRIVATE PHANTOM_TESTING=1)
 target_link_libraries(test_thread_qos PRIVATE SDL3::SDL3 pthread)
-if(APPLE)
-    target_link_libraries(test_thread_qos PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_thread_qos PRIVATE PkgConfig::LZ4)
 
 set(HYBRID_FLOW_SRCS
     src/ml/autocomplete.c
@@ -391,7 +395,4 @@ add_phantom_test(test_hybrid_flow
 target_compile_definitions(test_hybrid_flow PRIVATE PHANTOM_TESTING=1)
 target_link_libraries(test_hybrid_flow
     PRIVATE SDL3::SDL3 llama pthread)
-if(APPLE)
-    target_link_libraries(test_hybrid_flow
-        PRIVATE ${COMPRESSION_LIB})
-endif()
+target_link_libraries(test_hybrid_flow PRIVATE PkgConfig::LZ4)

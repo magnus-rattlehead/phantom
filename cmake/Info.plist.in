@@ -21,6 +21,8 @@
     <true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key>
     <true/>
+    <key>CFBundleIconFile</key>
+    <string>phantom</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
 </dict>

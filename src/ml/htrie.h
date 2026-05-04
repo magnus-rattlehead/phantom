@@ -7,12 +7,12 @@
 
 typedef struct HTrie HTrie;
 
-HTrie      *htrie_create(void);
-void        htrie_destroy(HTrie *t);
+HTrie *htrie_create(void);
+void htrie_destroy(HTrie *t);
 
 /* Inserts or increments the frequency count for cmd.
  * Calls from multiple threads are safe. */
-void        htrie_insert(HTrie *t, const char *cmd);
+void htrie_insert(HTrie *t, const char *cmd);
 
 /* Returns the highest-frequency command that starts with prefix (and is
  * longer than prefix).  Returns NULL if no match meets min_count.
@@ -20,7 +20,6 @@ void        htrie_insert(HTrie *t, const char *cmd);
  * NOT thread-safe  -  call from a single thread or under external lock. */
 const char *htrie_best(HTrie *t, const char *prefix, uint32_t min_count);
 
-/* Number of unique commands in the trie. */
-size_t      htrie_size(const HTrie *t);
+size_t htrie_size(const HTrie *t);
 
 #endif /* PHANTOM_HTRIE_H */

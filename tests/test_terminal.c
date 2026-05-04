@@ -1,27 +1,23 @@
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdint.h>
 
 #if defined(__APPLE__)
-#  include <dispatch/dispatch.h>
+#include <dispatch/dispatch.h>
 #endif
 
-#include "../src/terminal.h"
 #include "../src/config.h"
+#include "../src/terminal.h"
 
-extern int row_swar_scan(const Cell *row, int cols,
-                         const uint32_t *qcps, int qlen);
+extern int row_swar_scan(const Cell *row, int cols, const uint32_t *qcps,
+                         int qlen);
 
-
-static void get(Terminal *t, Cell *cells, int *cc, int *cr)
-{
+static void get(Terminal *t, Cell *cells, int *cc, int *cr) {
     terminal_get_state(t, cells, cc, cr);
 }
 
-
-static void test_create_destroy(void)
-{
+static void test_create_destroy(void) {
     Terminal *t = terminal_create(80, 24);
     assert(t != NULL);
     assert(80 == terminal_cols(t));
@@ -29,8 +25,7 @@ static void test_create_destroy(void)
     terminal_destroy(t);
 }
 
-static void test_printable_chars(void)
-{
+static void test_printable_chars(void) {
     Terminal *t = terminal_create(80, 24);
     terminal_feed(t, "AB", 2);
 
@@ -45,8 +40,7 @@ static void test_printable_chars(void)
     terminal_destroy(t);
 }
 
-static void test_newline_and_cr(void)
-{
+static void test_newline_and_cr(void) {
     Terminal *t = terminal_create(80, 24);
     terminal_feed(t, "AB\r\n", 4);
 
@@ -59,8 +53,7 @@ static void test_newline_and_cr(void)
     terminal_destroy(t);
 }
 
-static void test_erase_display(void)
-{
+static void test_erase_display(void) {
     Terminal *t = terminal_create(80, 24);
     terminal_feed(t, "HELLO", 5);
     terminal_feed(t, "\x1b[2J", 4);
@@ -74,8 +67,7 @@ static void test_erase_display(void)
     terminal_destroy(t);
 }
 
-static void test_cursor_position(void)
-{
+static void test_cursor_position(void) {
     Terminal *t = terminal_create(80, 24);
     terminal_feed(t, "\x1b[5;10H", 7);
 
@@ -88,8 +80,7 @@ static void test_cursor_position(void)
     terminal_destroy(t);
 }
 
-static void test_sgr_reset(void)
-{
+static void test_sgr_reset(void) {
     Terminal *t = terminal_create(80, 24);
     terminal_feed(t, "\x1b[31m", 5);
     terminal_feed(t, "X", 1);
@@ -106,8 +97,7 @@ static void test_sgr_reset(void)
     terminal_destroy(t);
 }
 
-static void test_alt_screen_isolation(void)
-{
+static void test_alt_screen_isolation(void) {
     Terminal *t = terminal_create(80, 24);
     terminal_feed(t, "PRIMARY", 7);
 
@@ -136,8 +126,7 @@ static void test_alt_screen_isolation(void)
     terminal_destroy(t);
 }
 
-static void test_alt_screen_cursor_restore(void)
-{
+static void test_alt_screen_cursor_restore(void) {
     Terminal *t = terminal_create(80, 24);
     terminal_feed(t, "\x1b[3;5H", 6);
     terminal_feed(t, "\x1b[?1049h", 8);
@@ -152,8 +141,7 @@ static void test_alt_screen_cursor_restore(void)
     terminal_destroy(t);
 }
 
-static void test_osc_no_spill(void)
-{
+static void test_osc_no_spill(void) {
     Terminal *t = terminal_create(80, 24);
     terminal_feed(t, "\x1b]0;window title\x07", 18);
     terminal_feed(t, "\x1b]2;another title\x1b\\", 20);
@@ -167,8 +155,7 @@ static void test_osc_no_spill(void)
     terminal_destroy(t);
 }
 
-static void test_app_cursor_keys(void)
-{
+static void test_app_cursor_keys(void) {
     Terminal *t = terminal_create(80, 24);
     assert(0 == terminal_app_cursor_keys(t));
 
@@ -181,8 +168,7 @@ static void test_app_cursor_keys(void)
     terminal_destroy(t);
 }
 
-static void test_cursor_visibility(void)
-{
+static void test_cursor_visibility(void) {
     Terminal *t = terminal_create(80, 24);
     assert(1 == terminal_cursor_visible(t));
 
@@ -195,8 +181,7 @@ static void test_cursor_visibility(void)
     terminal_destroy(t);
 }
 
-static void test_dec_special_graphics(void)
-{
+static void test_dec_special_graphics(void) {
     Terminal *t = terminal_create(80, 24);
 
     terminal_feed(t, "\x1b(0", 3);
@@ -210,12 +195,11 @@ static void test_dec_special_graphics(void)
 
     assert(0x2518u == cells[0].ch);
     assert(0x2500u == cells[1].ch);
-    assert('X'     == cells[2].ch);
+    assert('X' == cells[2].ch);
     terminal_destroy(t);
 }
 
-static void test_csi_gt_no_sgr(void)
-{
+static void test_csi_gt_no_sgr(void) {
     Terminal *t = terminal_create(80, 24);
     terminal_feed(t, "A", 1);
     terminal_feed(t, "\x1b[>4;2m", 7);
@@ -229,13 +213,12 @@ static void test_csi_gt_no_sgr(void)
     terminal_destroy(t);
 }
 
-static void test_erase_in_line(void)
-{
+static void test_erase_in_line(void) {
     Terminal *t = terminal_create(10, 3);
     terminal_feed(t, "ABCDEFGHIJ", 10);
     terminal_feed(t, "\x1b[1;5H", 6);
 
-    terminal_feed(t, "\x1b[K",  3);
+    terminal_feed(t, "\x1b[K", 3);
     Cell cells[10 * 3];
     int cc, cr;
     get(t, cells, &cc, &cr);
@@ -253,16 +236,15 @@ static void test_erase_in_line(void)
     terminal_destroy(t);
 }
 
-static void test_insert_lines(void)
-{
+static void test_insert_lines(void) {
     Terminal *t = terminal_create(10, 4);
     terminal_feed(t, "AAAAAAAAAA\r\n", 12);
     terminal_feed(t, "BBBBBBBBBB\r\n", 12);
     terminal_feed(t, "CCCCCCCCCC\r\n", 12);
-    terminal_feed(t, "DDDDDDDDDD",   10);
+    terminal_feed(t, "DDDDDDDDDD", 10);
 
     terminal_feed(t, "\x1b[2;1H", 6);
-    terminal_feed(t, "\x1b[1L",   4);
+    terminal_feed(t, "\x1b[1L", 4);
 
     Cell cells[10 * 4];
     int cc, cr;
@@ -275,16 +257,15 @@ static void test_insert_lines(void)
     terminal_destroy(t);
 }
 
-static void test_delete_lines(void)
-{
+static void test_delete_lines(void) {
     Terminal *t = terminal_create(10, 4);
     terminal_feed(t, "AAAAAAAAAA\r\n", 12);
     terminal_feed(t, "BBBBBBBBBB\r\n", 12);
     terminal_feed(t, "CCCCCCCCCC\r\n", 12);
-    terminal_feed(t, "DDDDDDDDDD",   10);
+    terminal_feed(t, "DDDDDDDDDD", 10);
 
     terminal_feed(t, "\x1b[2;1H", 6);
-    terminal_feed(t, "\x1b[1M",   4);
+    terminal_feed(t, "\x1b[1M", 4);
 
     Cell cells[10 * 4];
     int cc, cr;
@@ -297,8 +278,7 @@ static void test_delete_lines(void)
     terminal_destroy(t);
 }
 
-static void test_implicit_rmcup(void)
-{
+static void test_implicit_rmcup(void) {
     Terminal *t = terminal_create(80, 24);
     terminal_feed(t, "PRIMARY", 7);
 
@@ -318,15 +298,14 @@ static void test_implicit_rmcup(void)
     terminal_destroy(t);
 }
 
-static void test_resize_row_growth_pulls_scrollback(void)
-{
+static void test_resize_row_growth_pulls_scrollback(void) {
     Terminal *t = terminal_create(10, 3);
 
     terminal_feed(t, "AAAAAAAAAA\r\n", 12);
     terminal_feed(t, "BBBBBBBBBB\r\n", 12);
     terminal_feed(t, "CCCCCCCCCC\r\n", 12);
     terminal_feed(t, "DDDDDDDDDD\r\n", 12);
-    terminal_feed(t, "EEEEEEEEEE",   10);
+    terminal_feed(t, "EEEEEEEEEE", 10);
 
     terminal_resize(t, 10, 5);
 
@@ -345,15 +324,14 @@ static void test_resize_row_growth_pulls_scrollback(void)
     terminal_destroy(t);
 }
 
-static void test_resize_row_shrink_pushes_scrollback(void)
-{
+static void test_resize_row_shrink_pushes_scrollback(void) {
     Terminal *t = terminal_create(10, 5);
 
     terminal_feed(t, "AAAAAAAAAA\r\n", 12);
     terminal_feed(t, "BBBBBBBBBB\r\n", 12);
     terminal_feed(t, "CCCCCCCCCC\r\n", 12);
     terminal_feed(t, "DDDDDDDDDD\r\n", 12);
-    terminal_feed(t, "EEEEEEEEEE",   10);
+    terminal_feed(t, "EEEEEEEEEE", 10);
 
     terminal_resize(t, 10, 3);
 
@@ -373,13 +351,12 @@ static void test_resize_row_shrink_pushes_scrollback(void)
     terminal_destroy(t);
 }
 
-static void test_resize_col_change_preserves_content(void)
-{
+static void test_resize_col_change_preserves_content(void) {
     Terminal *t = terminal_create(10, 3);
 
     terminal_feed(t, "HELLO     \r\n", 12);
     terminal_feed(t, "WORLD     \r\n", 12);
-    terminal_feed(t, "ABCDE",          5);
+    terminal_feed(t, "ABCDE", 5);
 
     terminal_resize(t, 20, 3);
 
@@ -408,14 +385,13 @@ static void test_resize_col_change_preserves_content(void)
     terminal_destroy(t);
 }
 
-static void test_resize_scrollback_survives_col_change(void)
-{
+static void test_resize_scrollback_survives_col_change(void) {
     Terminal *t = terminal_create(10, 3);
 
     terminal_feed(t, "AAAAAAAAAA\r\n", 12);
     terminal_feed(t, "BBBBBBBBBB\r\n", 12);
     terminal_feed(t, "CCCCCCCCCC\r\n", 12);
-    terminal_feed(t, "DDDDDDDDDD",   10);
+    terminal_feed(t, "DDDDDDDDDD", 10);
 
     terminal_resize(t, 20, 3);
 
@@ -430,8 +406,7 @@ static void test_resize_scrollback_survives_col_change(void)
     terminal_destroy(t);
 }
 
-static void test_scrollback_push_and_read(void)
-{
+static void test_scrollback_push_and_read(void) {
     Terminal *t = terminal_create(10, 5);
     int total = SB_CHUNK_ROWS + 3;
     char line[13];
@@ -452,8 +427,7 @@ static void test_scrollback_push_and_read(void)
     terminal_destroy(t);
 }
 
-static void test_scrollback_preserved_on_resize(void)
-{
+static void test_scrollback_preserved_on_resize(void) {
     Terminal *t = terminal_create(10, 5);
     for (int i = 0; i < SB_CHUNK_ROWS * 2; i++)
         terminal_feed(t, "line\r\n", 6);
@@ -471,8 +445,7 @@ static void test_scrollback_preserved_on_resize(void)
     terminal_destroy(t);
 }
 
-static void test_scrollback_scroll_clamping(void)
-{
+static void test_scrollback_scroll_clamping(void) {
     Terminal *t = terminal_create(10, 4);
     terminal_feed(t, "A\r\n", 3);
     terminal_scroll(t, 999999);
@@ -487,8 +460,7 @@ static void test_scrollback_scroll_clamping(void)
     terminal_destroy(t);
 }
 
-static void test_scrollback_infinite(void)
-{
+static void test_scrollback_infinite(void) {
     Terminal *t = terminal_create(5, 3);
     int total = SB_CHUNK_ROWS * 4 + 7;
     for (int i = 0; i < total; i++)
@@ -502,18 +474,16 @@ static void test_scrollback_infinite(void)
     terminal_destroy(t);
 }
 
-static Cell make_cell(uint32_t ch)
-{
+static Cell make_cell(uint32_t ch) {
     Cell c;
-    c.ch    = ch;
-    c.fg    = 0xFFFFFFFFu;
-    c.bg    = 0x000000FFu;
+    c.ch = ch;
+    c.fg = 0xFFFFFFFFu;
+    c.bg = 0x000000FFu;
     c.attrs = 0;
     return c;
 }
 
-static void test_swar_scan(void)
-{
+static void test_swar_scan(void) {
     /* Build a row of 20 distinct ASCII cells. */
     Cell row[20];
     for (int i = 0; i < 20; i++)
@@ -542,26 +512,26 @@ static void test_swar_scan(void)
     assert(0 == row_swar_scan(row, 20, q1, 1));
 
     /* Multi-codepoint query: match "fg" starting at position 5. */
-    uint32_t q2[2] = { 'f', 'g' };
+    uint32_t q2[2] = {'f', 'g'};
     assert(1 == row_swar_scan(row, 20, q2, 2));
 
     /* Multi-codepoint query: no match because second cell doesn't follow. */
-    uint32_t q2b[2] = { 'f', 'z' };
+    uint32_t q2b[2] = {'f', 'z'};
     assert(0 == row_swar_scan(row, 20, q2b, 2));
 
     /* False-positive: cell whose low byte matches but full ch differs. */
     Cell fp[10];
     for (int i = 0; i < 10; i++)
-        fp[i] = make_cell(0xFFFFu);     /* low byte = 0xFF, high bytes set */
-    fp[5] = make_cell(0x01FFu);         /* low byte still 0xFF */
-    uint32_t qfp[1] = { 0xFFFFu };
+        fp[i] = make_cell(0xFFFFu); /* low byte = 0xFF, high bytes set */
+    fp[5] = make_cell(0x01FFu);     /* low byte still 0xFF */
+    uint32_t qfp[1] = {0xFFFFu};
     assert(1 == row_swar_scan(fp, 10, qfp, 1));
 
     /* False-positive rejected: low byte matches but full codepoint does not. */
     Cell fp2[10];
     for (int i = 0; i < 10; i++)
-        fp2[i] = make_cell(0x0101u);    /* low byte = 0x01 */
-    uint32_t qfp2[1] = { 0x0201u };    /* same low byte, different full ch */
+        fp2[i] = make_cell(0x0101u); /* low byte = 0x01 */
+    uint32_t qfp2[1] = {0x0201u};    /* same low byte, different full ch */
     assert(0 == row_swar_scan(fp2, 10, qfp2, 1));
 
     /* Non-ASCII first codepoint (ch > 0xFF): SWAR low-byte misses are OK
@@ -569,7 +539,7 @@ static void test_swar_scan(void)
     Cell uni[10];
     for (int i = 0; i < 10; i++)
         uni[i] = make_cell(0x1F600u + (uint32_t)i);
-    uint32_t qu[1] = { 0x1F605u };
+    uint32_t qu[1] = {0x1F605u};
     assert(1 == row_swar_scan(uni, 10, qu, 1));
 }
 
@@ -578,12 +548,11 @@ static void test_swar_scan(void)
 
 typedef struct {
     dispatch_semaphore_t sem;
-    int                  hits;
-    int                  target;
+    int hits;
+    int target;
 } SearchCtx;
 
-static void search_hit_cb(int abs_row, void *arg)
-{
+static void search_hit_cb(int abs_row, void *arg) {
     (void)abs_row;
     SearchCtx *ctx = (SearchCtx *)arg;
     ctx->hits++;
@@ -591,36 +560,33 @@ static void search_hit_cb(int abs_row, void *arg)
         dispatch_semaphore_signal(ctx->sem);
 }
 
-static void search_count_cb(int abs_row, void *arg)
-{
+static void search_count_cb(int abs_row, void *arg) {
     (void)abs_row;
     int *count = (int *)arg;
     (*count)++;
 }
 
-static void test_terminal_search_basic(void)
-{
+static void test_terminal_search_basic(void) {
     Terminal *t = terminal_create(20, 3);
     for (int i = 0; i < 10; i++)
         terminal_feed(t, "hello world\r\n", 13);
 
     SearchCtx ctx = {
-        .sem    = dispatch_semaphore_create(0),
-        .hits   = 0,
+        .sem = dispatch_semaphore_create(0),
+        .hits = 0,
         .target = 7,
     };
     terminal_search(t, "hello", search_hit_cb, NULL, &ctx);
 
-    dispatch_semaphore_wait(ctx.sem,
-        dispatch_time(DISPATCH_TIME_NOW, 2LL * 1000000000LL));
+    dispatch_semaphore_wait(
+        ctx.sem, dispatch_time(DISPATCH_TIME_NOW, 2LL * 1000000000LL));
     assert(ctx.hits >= 7);
     dispatch_release(ctx.sem);
     terminal_search_cancel(t);
     terminal_destroy(t);
 }
 
-static void test_terminal_search_cancel(void)
-{
+static void test_terminal_search_cancel(void) {
     Terminal *t = terminal_create(20, 3);
     for (int i = 0; i < SB_CHUNK_ROWS * 3; i++)
         terminal_feed(t, "aaaa\r\n", 6);
@@ -628,14 +594,90 @@ static void test_terminal_search_cancel(void)
     terminal_search(t, "aaaa", search_count_cb, NULL, &dummy);
     terminal_search_cancel(t);
     /* Give the background thread a moment to exit cleanly. */
-    struct timespec ts = { 0, 20 * 1000000 };
+    struct timespec ts = {0, 20 * 1000000};
     nanosleep(&ts, NULL);
     terminal_destroy(t);
 }
 #endif /* __APPLE__ */
 
-int main(void)
-{
+/* Feed a row of `len` copies of `ch` followed by \r\n. */
+static void feed_line(Terminal *t, char ch, int len) {
+    char buf[256];
+    int i;
+    for (i = 0; i < len && i < 254; i++)
+        buf[i] = ch;
+    buf[i++] = '\r';
+    buf[i++] = '\n';
+    terminal_feed(t, buf, i);
+}
+
+/* Feed a single long unwrapped line (no \r\n) of len chars of ch. */
+static void feed_long_line(Terminal *t, char ch, int len) {
+    char *buf = malloc((size_t)len);
+    if (!buf)
+        return;
+    memset(buf, (unsigned char)ch, (size_t)len);
+    terminal_feed(t, buf, (size_t)len);
+    free(buf);
+}
+
+/* Verify that sb_decomp_cache_get does not overflow when a trimmed chunk's
+ * cache slot is reused for a larger chunk (cells_cap must be checked on
+ * reuse, not just on first allocation). */
+static void test_sb_cache_no_overflow_after_trim(void) {
+    Terminal *t = terminal_create(80, 24);
+
+    for (int i = 0; i < 68; i++)
+        feed_line(t, (char)('A' + i % 26), 60);
+
+    feed_long_line(t, 'Z', 80 * 3);
+
+    terminal_resize(t, 80, 23);
+    terminal_resize(t, 80, 24);
+
+    for (int iter = 0; iter < 10; iter++) {
+        terminal_resize(t, 60, 20);
+        terminal_resize(t, 40, 16);
+        terminal_resize(t, 60, 20);
+        terminal_resize(t, 80, 24);
+    }
+
+    Cell cells[80 * 24];
+    int cc, cr;
+    terminal_get_state(t, cells, &cc, &cr);
+    assert(cr >= 0 && cr < 24);
+    assert(cc >= 0 && cc < 80);
+    terminal_destroy(t);
+}
+
+static void test_selection_scroll_stable(void) {
+    /* Select a row, scroll up, verify the cell is still reported as selected
+     * (virtual-row scheme keeps selection anchored to content). */
+    Terminal *t = terminal_create(10, 3);
+
+    /* Push one row into scrollback by filling 4 rows of content. */
+    terminal_feed(t, "AAAAAAAAAA\r\n", 12);
+    terminal_feed(t, "BBBBBBBBBB\r\n", 12);
+    terminal_feed(t, "CCCCCCCCCC\r\n", 12);
+    terminal_feed(t, "DDDDDDDDDD", 10);
+
+    /* Select grid row 0 (virtual row 0), col 0. */
+    terminal_set_selection(t, 0, 0, 9, 0);
+    assert(terminal_cell_selected(t, 0, 0)); /* viewport row 0 selected */
+    assert(!terminal_cell_selected(t, 0, 1));
+
+    /* Scroll up 1: viewport row 0 now shows most-recent sb row (C-line).
+     * The selection (virtual row 0 = grid row 0) should no longer highlight
+     * viewport row 0 (which now shows a different row). */
+    terminal_scroll(t, 1);
+    assert(!terminal_cell_selected(t, 0, 0)); /* viewport row 0 = sb, not sel */
+    /* Viewport row 1 now shows virtual row 0 (the D-line we selected). */
+    assert(terminal_cell_selected(t, 0, 1));
+
+    terminal_destroy(t);
+}
+
+int main(void) {
     test_create_destroy();
     test_printable_chars();
     test_newline_and_cr();
@@ -656,6 +698,8 @@ int main(void)
     test_resize_row_growth_pulls_scrollback();
     test_resize_row_shrink_pushes_scrollback();
     test_resize_col_change_preserves_content();
+    test_sb_cache_no_overflow_after_trim();
+    test_selection_scroll_stable();
     test_resize_scrollback_survives_col_change();
     test_scrollback_push_and_read();
     test_scrollback_preserved_on_resize();
